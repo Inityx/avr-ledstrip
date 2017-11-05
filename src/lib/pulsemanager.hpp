@@ -24,30 +24,40 @@ namespace PulseManager {
             const uint8_t *levels_source,
             const DigitalPort &port
         ) : counter(0), port(port), selection(0) {
-            // This loop is because you can't pass a C array as an argument in C++
-            // and std::array does not exist on AVR. It's still constexpr though.
+            // This loop is because you can't pass a C array
+            // as an argument in C++ and std::array does not
+            // exist on AVR. It's still constexpr though.
             for(uint8_t i{0}; i<COUNT; i++) {
                 levels[i] = levels_source[i];
                 pins[i] = pins_source[i];
             }
         }
 
-        void set_level(uint8_t index, uint8_t value) { levels[index] = value; }
+        void set_level(uint8_t index, uint8_t value) {
+            levels[index] = value;
+        }
         
         void step() {
-            if(counter == 0) {
+            if(counter == 0)
+                // Set all pins high to start
                 for(uint8_t i{0}; i<COUNT; i++)
                     port.set_high(pins[i]);
-            } else {
+            else
+                // Set pins low if count passed level
                 for(uint8_t i{0}; i<COUNT; i++)
                     if(counter > levels[i])
                         port.set_low(pins[i]);
-            }
             
             counter++;
         }
 
-        void adjust_next() { selection = (selection < (COUNT-1)) ? selection + 1 : 0; }
+        void select_next() {
+            if (selection < (COUNT-1))
+                selection++;
+            else
+                selection = 0;
+        }
+
         void adjust_up()   { levels[selection]++; }
         void adjust_down() { levels[selection]--; }
     };

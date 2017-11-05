@@ -6,6 +6,8 @@
 namespace PortLib {
         
     typedef volatile uint8_t & Register;
+    typedef const uint8_t PinIndex;
+
     struct DigitalPort {
     protected:
         // Members
@@ -31,13 +33,13 @@ namespace PortLib {
         inline void set_out() { ddrx = 0xFF; }
         inline void set_in() { ddrx = 0x00; }
 
-        inline void set_out (uint8_t index) { ddrx  |=  (1<<index); }
-        inline void set_in  (uint8_t index) { ddrx  &= ~(1<<index); }
-        inline void set_high(uint8_t index) { portx |=  (1<<index); }
-        inline void set_low (uint8_t index) { portx &= ~(1<<index); }
-        inline void toggle  (uint8_t index) { portx ^=  (1<<index); }
+        inline void set_out (PinIndex index) { ddrx  |=  (1<<index); }
+        inline void set_in  (PinIndex index) { ddrx  &= ~(1<<index); }
+        inline void set_high(PinIndex index) { portx |=  (1<<index); }
+        inline void set_low (PinIndex index) { portx &= ~(1<<index); }
+        inline void toggle  (PinIndex index) { portx ^=  (1<<index); }
 
-        inline void set(bool rhs, uint8_t index) { rhs ? set_high(index) : set_low(index); }
+        inline void set(bool rhs, PinIndex index) { rhs ? set_high(index) : set_low(index); }
 
         // Relationships
         friend class DigitalPin;
@@ -53,7 +55,7 @@ namespace PortLib {
         // Constructors
         constexpr DigitalPin(
             DigitalPort port,
-            uint8_t index
+            PinIndex index
         ) :
             port(port),
             bitmask(1<<index)
