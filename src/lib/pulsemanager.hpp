@@ -8,58 +8,74 @@
 
 namespace PulseManager {
     using PortLib::DigitalPort;
+    using PortLib::PinIndex;
 
-    template<uint8_t COUNT>
+    template<PinIndex COUNT, uint8_t STEP>
     struct MultiPWM {
     private:
         uint8_t levels[COUNT];
-        uint8_t pins[COUNT];
-        DigitalPort port;
+        PinIndex pins[COUNT];
+        DigitalPort &port;
         uint8_t counter;
-        uint8_t selection;
         
     public:
+        bool active;
+        PinIndex selection;
+        
         constexpr MultiPWM(
-            const uint8_t *pins_source,
-            const uint8_t *levels_source,
-            const DigitalPort &port
-        ) : counter(0), port(port), selection(0) {
+            PinIndex const *pins_source,
+            uint8_t const *levels_source,
+            DigitalPort &port
+        ) : counter(0), port(port), active(true), selection(0) {
             // This loop is because you can't pass a C array
             // as an argument in C++ and std::array does not
             // exist on AVR. It's still constexpr though.
-            for(uint8_t i{0}; i<COUNT; i++) {
+            for(PinIndex i{0}; i<COUNT; i++) {
                 levels[i] = levels_source[i];
                 pins[i] = pins_source[i];
             }
         }
 
-        void set_level(uint8_t index, uint8_t value) {
+        inline void set_level(PinIndex index, uint8_t value) {
             levels[index] = value;
         }
         
-        void step() {
+        inline void isolate_selected() {
+            for(uint8_t i{0}; i<COUNT; i++)
+                if (i != selection)
+                    port.set_low(pins[i]);
+
+            port.set_high(pins[selection]);
+        }
+
+        inline void step() {
+            if (!active) return;
+
+            // Set all pins high to start
             if(counter == 0)
-                // Set all pins high to start
-                for(uint8_t i{0}; i<COUNT; i++)
-                    port.set_high(pins[i]);
-            else
-                // Set pins low if count passed level
-                for(uint8_t i{0}; i<COUNT; i++)
-                    if(counter > levels[i])
-                        port.set_low(pins[i]);
+                for(PinIndex i{0}; i<COUNT; i++)
+                    if (levels[i] != 0)
+                        port.set_high(pins[i]);
+
+            // Set pins low if count passed level
+            for(PinIndex i{0}; i<COUNT; i++)
+                if(counter > levels[i])
+                    port.set_low(pins[i]);
             
             counter++;
         }
 
-        void select_next() {
-            if (selection < (COUNT-1))
-                selection++;
-            else
+        inline void select_next() {
+            if (selection >= COUNT-1) {
                 selection = 0;
+                return;
+            }
+
+            selection++;
         }
 
-        void adjust_up()   { levels[selection]++; }
-        void adjust_down() { levels[selection]--; }
+        inline void adjust_up()   { levels[selection] += STEP; }
+        inline void adjust_down() { levels[selection] -= STEP; }
     };
 }
 #endif
