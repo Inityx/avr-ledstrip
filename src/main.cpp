@@ -33,7 +33,7 @@ Timer0 pwm_timer{
     TIFR0
 };
 
-ISR(__vector_TIMER0_OVF_vect) {
+ISR(TIM0_OVF_vect) {
     pwm.step();
 }
 
@@ -44,7 +44,6 @@ int main() {
     pwm_timer.set_mode(Timer0::Mode::normal);
     pwm_timer.set_prescale(Timer0::Prescale::d1);
 
-    // sei();
-    while(true)
-        pwm.step();
+    sei();
+    while(true);
 }
