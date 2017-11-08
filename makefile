@@ -22,9 +22,12 @@ HEX=$(BUILD)/$(MAIN).hex
 ELF=$(BUILD)/$(MAIN).elf
 
 # Targets
-.PHONY: all install clean toolchain
+.PHONY: all install spec clean configure
 
 all: $(HEX)
+
+spec: $(HEX)
+	@echo "Hex size: $(shell stat -c %s $(HEX)) bytes"
 
 install: $(HEX)
 	sudo $(AVRDUDE) $(DUDE_ARGS) -U flash:w:$(HEX)
@@ -32,7 +35,8 @@ install: $(HEX)
 clean:
 	rm -f $(ELF) $(HEX)
 
-toolchain: .nvimrc
+# Configure
+configure: .nvimrc
 
 .nvimrc:
 	@echo "Generating local .nvimrc..."
