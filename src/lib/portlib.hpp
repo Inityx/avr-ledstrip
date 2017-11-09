@@ -160,8 +160,8 @@ namespace PortLib {
         }
     };
 
-    typedef Timer<uint8_t> Timer0;
-    typedef Timer<uint16_t> Timer1;
+    using Timer0 = Timer<uint8_t>;
+    using Timer1 = Timer<uint16_t>;
 
     struct RotaryEncoder {
         enum struct Active : uint8_t { A, B, BOTH, NONE };
