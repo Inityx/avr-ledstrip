@@ -56,14 +56,14 @@ static inline void event_handler(
     if (rotary_clicked || ext_button_pressed) {
         // If caused by button press
         pwm.active = false;
-        if (rotary_clicked) {
-            pwm.select_next();
-        } else if (ext_button_pressed) {
-        }
+
+        if (rotary_clicked) pwm.select_next();
+        if (ext_button_pressed) { /* Select next preset */ }
+        
         pwm.isolate_selected();
         _delay_ms(500);
+        
         pwm.active = true;
-
     }
 
     if (rotary_transient) {
@@ -72,9 +72,12 @@ static inline void event_handler(
         case RotaryEncoder::Active::A:
             pwm.adjust_up();
             break;
+
         case RotaryEncoder::Active::B:
             pwm.adjust_down();
             break;
+
+        default: break;
         }
         
         // debounce
