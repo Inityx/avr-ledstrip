@@ -1,39 +1,44 @@
-# Build definitions
-CXX=avr-g++
-CFLAGS=-Os -Wpedantic --std=c++17
-DEVICE_DEFS=-DF_CPU=8000000 -mmcu=attiny84
-
-OBJHEX=avr-objcopy
-AVRDUDE=avrdude
-DUDE_ARGS=-c usbtiny -p t84 -b 115200 -u
+MAKEFLAGS+=--no-print-directory
 
 # Source structure
 MAIN=main
+AVRSUPPORT=avrsupport
 
 SRC=src
-SRC_LIB=$(SRC)/lib
-
 MAIN_CPP=$(SRC)/$(MAIN).cpp
-MAIN_CPP_HDR=$(addprefix $(SRC_LIB)/, portlib.hpp pulsemanager.hpp)
 
 BUILD=build
 
 HEX=$(BUILD)/$(MAIN).hex
 ELF=$(BUILD)/$(MAIN).elf
 
+# Build definitions
+CXX=avr-g++
+CFLAGS=-Os -Wpedantic --std=c++17
+DEVICE_DEFS=-DF_CPU=8000000 -mmcu=attiny84
+AVRSUPPORT_PATH=-iquote $(AVRSUPPORT)/include
+
+OBJHEX=avr-objcopy
+AVRDUDE=avrdude
+DUDE_ARGS=-c usbtiny -p t84 -b 115200 -u
+
 # Targets
-.PHONY: all install spec clean configure
+.PHONY: all build install spec clean configure avrsupport
 
-all: $(HEX)
+all: build
 
-spec: $(HEX)
+spec: build
 	@echo "Hex size: $(shell stat -c %s $(HEX)) bytes"
 
-install: $(HEX)
-	sudo $(AVRDUDE) $(DUDE_ARGS) -U flash:w:$(HEX)
+install: build
+	@echo " DUDE $(HEX)"
+	@sudo $(AVRDUDE) $(DUDE_ARGS) -U flash:w:$(HEX)
+
+build: $(HEX)
 
 clean:
-	rm -f $(ELF) $(HEX)
+	@echo " RM $(ELF) $(HEX)"
+	@rm -f $(ELF) $(HEX)
 
 # Configure
 configure: .nvimrc
@@ -41,11 +46,17 @@ configure: .nvimrc
 .nvimrc:
 	@echo "Generating local .nvimrc..."
 	@echo "let g:syntastic_cpp_compiler = '$(CXX)'" > .nvimrc
-	@echo "let g:syntastic_cpp_compiler_options = ' $(DEVICE_DEFS) $(CFLAGS)'" >> .nvimrc
+	@echo "let g:syntastic_cpp_compiler_options = ' $(DEVICE_DEFS) $(CFLAGS) $(AVRSUPPORT_PATH)'" >> .nvimrc
 
 # Build
 $(HEX): $(ELF)
-	$(OBJHEX) -R .eeprom -O ihex $(ELF) $(HEX)
+	@echo " HEX $(basename $(notdir $@))"
+	@$(OBJHEX) -R .eeprom -O ihex $(ELF) $(HEX)
 
-$(ELF): $(MAIN_CPP) $(MAIN_CPP_HDR)
-	$(CXX) $(MAIN_CPP) -o $(ELF) $(DEVICE_DEFS) $(CFLAGS)
+$(ELF): $(MAIN_CPP)
+	@echo " CC $(basename $(notdir $@))"
+	@$(CXX) $(MAIN_CPP) -o $(ELF) $(DEVICE_DEFS) $(CFLAGS) $(AVRSUPPORT_PATH)
+
+avrsupport:
+	@echo " MAKE $(AVRSUPPORT)"
+	@$(MAKE) -C $(AVRSUPPORT)

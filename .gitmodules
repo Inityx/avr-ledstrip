@@ -1,0 +1,3 @@
+[submodule "avrsupport"]
+	path = avrsupport
+	url = git@github.com:inityx/avrsupport
