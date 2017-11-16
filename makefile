@@ -27,8 +27,9 @@ DUDE_ARGS=-c usbtiny -p t84 -b 115200 -u
 
 all: build
 
-spec: build
-	@echo "Hex size: $(shell stat -c %s $(HEX)) bytes"
+spec: CFLAGS+= -g
+spec: $(ELF)
+	avr-objdump --source --demangle $(ELF) | less
 
 install: build
 	@echo " DUDE $(HEX)"
