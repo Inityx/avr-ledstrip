@@ -23,13 +23,16 @@ AVRDUDE=avrdude
 DUDE_ARGS=-c usbtiny -p t84 -b 115200 -u
 
 # Targets
-.PHONY: all build install spec clean configure avrsupport
+.PHONY: all build install spec fuse clean configure avrsupport
 
 all: build
 
 spec: CFLAGS+= -g
 spec: $(ELF)
 	avr-objdump --source --demangle $(ELF) | less
+
+fuse:
+	sudo $(AVRDUDE) $(DUDE_ARGS) -U lfuse:w:0xd2:m -U hfuse:w:0xdf:m -U efuse:w:0xff:m
 
 install: build
 	@echo " DUDE $(HEX)"
