@@ -4,99 +4,79 @@
 #include <stdint.h>
 
 #include "chips/attiny84.hpp"
-
 #include "portlib/portlib.hpp"
 #include "portlib/digitalpin.hpp"
-
 #include "emulated/multipwm.hpp"
-
 #include "peripheral/rotaryencoder.hpp"
 
-#include "utility/array.hpp"
-
-using namespace AVRSupport;
+using namespace AvrSupport;
 
 using PortLib::DigitalPin;
 using PortLib::PinIndex;
 using Peripheral::RotaryEncoder;
 using Emulated::MultiPWM;
-using Utility::Array;
 
-PinIndex const CHANNELS{3};
-
-Array<PinIndex, CHANNELS> const PWM_PINS = { 0, 1, 2 };
-Array<uint8_t, CHANNELS> const INIT_LEVELS = { 0x00, 0x00, 0x00 };
-
-DigitalPin rotary_button{port_b, 0};
-DigitalPin ext_button{port_a, 3};
-
-DigitalPin rotary_a{port_b, 2};
-DigitalPin rotary_b{port_b, 1};
-
-RotaryEncoder rotary_encoder;
-
-MultiPWM<CHANNELS, 16> pwm{
-    PWM_PINS,
-    INIT_LEVELS,
+MultiPWM<3, 16> pwm{
+    {0, 1, 2},
+    {0, 0, 0},
     port_a
 };
 
 ISR(TIM0_OVF_vect) { pwm.step(); }
 
-static inline void handle_buttons(bool rotary, bool ext_button) {
-    if (rotary) {
-        pwm.active = false;
+static inline void handle_buttons(bool knob_button, bool aux_button) {
+    if (knob_button) {
+        pwm.pause();
         
         pwm.select_next();
         pwm.isolate_selected();
         _delay_ms(500);
 
-        pwm.active = true;
+        pwm.resume();
     }
 
-    if (ext_button) { /* Select next preset */ }
+    if (aux_button) {
+        // TODO: Select next preset
+    }
 }
 
-static inline void handle_rotary(bool right, bool left) {
-    if (right || left) {
-        if (right)     pwm.adjust_up();
-        else if (left) pwm.adjust_down();
-        rotary_encoder.clear();
-    }
+static inline void handle_knob_rotate(RotaryEncoder & knob) {
+    if (knob.turned_right()) { pwm.adjust_up();   knob.clear(); return; }
+    if (knob.turned_left ()) { pwm.adjust_down(); knob.clear(); return; }
 }
 
 int main() {
-    for(PinIndex i : PWM_PINS) port_a.set_out(i);
+    RotaryEncoder knob;
 
-    timer_0.set_mode(Timer0::Mode::normal);
-    timer_0.set_prescale(Timer0::Prescale::d1);
+    DigitalPin knob_pin_a {port_b, 2};
+    DigitalPin knob_pin_b {port_b, 1};
+    DigitalPin knob_button{port_b, 0};
+    DigitalPin  aux_button{port_a, 3};
+
+    knob_pin_b .set_in();
+    knob_pin_a .set_in();
+    knob_button.set_in();
+    knob_button.set_high();
+     aux_button.set_in();
+    
+    pwm.set_pins_out();
+
+    timer_0.set_mode        (Timer0::Mode::normal);
+    timer_0.set_prescale    (Timer0::Prescale::d1);
     timer_0.enable_interrupt(Timer0::Trigger::overflow);
 
-    rotary_b.set_in();
-    rotary_a.set_in();
-    ext_button.set_in();
-    rotary_button.set_in();
-    rotary_button.set_high();
-    
     sei();
 
     while(true) {
-        // Polling
-        rotary_encoder.update(!rotary_a.get(), !rotary_b.get());
-        bool rotary_clicked = !rotary_button.get();
-        bool ext_button_pressed = ext_button.get();
+        bool  aux_button_clicked =   aux_button.get();
+        bool knob_button_clicked = !knob_button.get();
 
-        // Handling
-        handle_buttons(
-            rotary_clicked,
-            ext_button_pressed
-        );
-        handle_rotary(
-            rotary_encoder.turned_right(),
-            rotary_encoder.turned_left()
-        );
+        knob.update(!knob_pin_a.get(), !knob_pin_b.get());
 
-        // All debounce
+        handle_buttons(knob_button_clicked, aux_button_clicked);
+        handle_knob_rotate(knob);
+
+        // Debounce
         _delay_us(20);
     }
 }
