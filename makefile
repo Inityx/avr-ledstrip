@@ -16,11 +16,11 @@ ELF=$(BUILD)/$(MAIN).elf
 CXX=avr-g++
 CFLAGS=-Os -Wpedantic --std=c++17
 DEVICE_DEFS=-DF_CPU=8000000 -mmcu=attiny84
-AVRSUPPORT_PATH=-iquote $(AVRSUPPORT)/include
+AVRSUPPORT_PATH=-I $(AVRSUPPORT)/include
 
 OBJHEX=avr-objcopy
 AVRDUDE=avrdude
-DUDE_ARGS=-c usbtiny -p t84 -b 115200 -u
+DUDE_ARGS=-c avrisp2 -p t84 -P /dev/ttyACM0 -u
 
 # Targets
 .PHONY: all build install spec fuse clean configure avrsupport
@@ -47,10 +47,11 @@ clean:
 # Configure
 configure: .nvimrc
 
+.nvimrc: CXX_OPTS=$(DEVICE_DEFS) $(CFLAGS) $(AVRSUPPORT_PATH)
 .nvimrc:
 	@echo "Generating local .nvimrc..."
 	@echo "let g:syntastic_cpp_compiler = '$(CXX)'" > .nvimrc
-	@echo "let g:syntastic_cpp_compiler_options = ' $(DEVICE_DEFS) $(CFLAGS) $(AVRSUPPORT_PATH)'" >> .nvimrc
+	@echo "let g:syntastic_cpp_compiler_options = ' $(CXX_OPTS)'" >> .nvimrc
 
 # Build
 $(HEX): $(ELF)

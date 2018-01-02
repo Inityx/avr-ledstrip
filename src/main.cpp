@@ -3,23 +3,36 @@
 #include <util/delay.h>
 #include <stdint.h>
 
-#include "chips/attiny84.hpp"
-#include "portlib/portlib.hpp"
-#include "portlib/digitalpin.hpp"
-#include "emulated/multipwm.hpp"
-#include "peripheral/rotaryencoder.hpp"
+#include <portlib/digitalport.hpp>
+#include <portlib/digitalpin.hpp>
+#include <portlib/timer.hpp>
+
+#include <emulated/multipwm.hpp>
+#include <peripheral/rotaryencoder.hpp>
 
 using namespace AvrSupport;
-
-using PortLib::DigitalPin;
-using PortLib::PinIndex;
+using namespace PortLib;
 using Peripheral::RotaryEncoder;
-using Emulated::MultiPWM;
+using Timer0 = Timer<uint8_t>;
 
-MultiPWM<3, 16> pwm{
-    {0, 1, 2},
-    {0, 0, 0},
+DigitalPort
+    port_a { PINA, PORTA, DDRA},
+    port_b { PINB, PORTB, DDRB};
+
+Emulated::MultiPWM<3, 15> pwm{ // 255 is evenly divisible by 15
+    {0, 1, 2}, // Pins
+    {0, 0, 0}, // Levels
     port_a
+};
+
+Timer0 timer_0{
+    TCNT0,
+    OCR0A,
+    OCR0B,
+    TCCR0A,
+    TCCR0B,
+    TIMSK0,
+    TIFR0
 };
 
 ISR(TIM0_OVF_vect) { pwm.step(); }
@@ -41,8 +54,11 @@ static inline void handle_buttons(bool knob_button, bool aux_button) {
 }
 
 static inline void handle_knob_rotate(RotaryEncoder & knob) {
-    if (knob.turned_right()) { pwm.adjust_up();   knob.clear(); return; }
-    if (knob.turned_left ()) { pwm.adjust_down(); knob.clear(); return; }
+    if      (knob.turned_right()) pwm.adjust_up();
+    else if (knob.turned_left ()) pwm.adjust_down();
+    else return;
+
+    knob.clear();
 }
 
 int main() {
@@ -71,7 +87,7 @@ int main() {
         bool  aux_button_clicked =   aux_button.get();
         bool knob_button_clicked = !knob_button.get();
 
-        knob.update(!knob_pin_a.get(), !knob_pin_b.get());
+        knob.sample(!knob_pin_a.get(), !knob_pin_b.get());
 
         handle_buttons(knob_button_clicked, aux_button_clicked);
         handle_knob_rotate(knob);
