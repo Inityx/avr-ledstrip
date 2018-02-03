@@ -6,12 +6,14 @@
 #include <portlib/digitalport.hpp>
 #include <portlib/digitalpin.hpp>
 #include <portlib/timer.hpp>
+#include <utility/array.hpp>
 
 #include <emulated/multipwm.hpp>
 #include <peripheral/rotaryencoder.hpp>
 
 using namespace AvrSupport;
 using namespace PortLib;
+using Utility::Array;
 using Peripheral::RotaryEncoder;
 using Timer0 = Timer<uint8_t>;
 
@@ -27,17 +29,15 @@ Emulated::MultiPWM<3, 15> pwm{ // 255 is evenly divisible by 15
 
 Timer0 timer_0{
     TCNT0,
-    OCR0A,
-    OCR0B,
-    TCCR0A,
-    TCCR0B,
+    OCR0A, OCR0B,
+    TCCR0A, TCCR0B,
     TIMSK0,
     TIFR0
 };
 
 ISR(TIM0_OVF_vect) { pwm.step(); }
 
-static inline void handle_buttons(bool knob_button, bool aux_button) {
+void handle_buttons(bool knob_button, bool aux_button) {
     if (knob_button) {
         pwm.pause();
         
@@ -50,10 +50,14 @@ static inline void handle_buttons(bool knob_button, bool aux_button) {
 
     if (aux_button) {
         // TODO: Select next preset
+        pwm.pause();
+        pwm.isolate_selected();
+        _delay_ms(1000);
+        pwm.resume();
     }
 }
 
-static inline void handle_knob_rotate(RotaryEncoder & knob) {
+void handle_knob_rotate(RotaryEncoder & knob) {
     if      (knob.turned_right()) pwm.adjust_up();
     else if (knob.turned_left ()) pwm.adjust_down();
     else return;
@@ -64,32 +68,34 @@ static inline void handle_knob_rotate(RotaryEncoder & knob) {
 int main() {
     RotaryEncoder knob;
 
-    DigitalPin knob_pin_a {port_b, 2};
-    DigitalPin knob_pin_b {port_b, 1};
-    DigitalPin knob_button{port_b, 0};
-    DigitalPin  aux_button{port_a, 3};
+    DigitalPin
+        knob_pin_a {port_b, 2},
+        knob_pin_b {port_b, 1},
+        knob_button{port_a, 4},
+         aux_button{port_a, 3};
 
-    knob_pin_b .set_in();
-    knob_pin_a .set_in();
-    knob_button.set_in();
-    knob_button.set_high();
-     aux_button.set_in();
+    Array<DigitalPin *, 4> inputs {
+        &knob_pin_a,
+        &knob_pin_b,
+        &knob_button,
+        &aux_button
+    };
+
+    for (auto input : inputs)
+        (*input).set_in().set_high();
     
     pwm.set_pins_out();
 
-    timer_0.set_mode        (Timer0::Mode::normal);
-    timer_0.set_prescale    (Timer0::Prescale::d1);
-    timer_0.enable_interrupt(Timer0::Trigger::overflow);
+    timer_0
+        .set_mode        (Timer0::Mode::normal)
+        .set_prescale    (Timer0::Prescale::d1)
+        .enable_interrupt(Timer0::Trigger::overflow);
 
     sei();
 
     while(true) {
-        bool  aux_button_clicked =   aux_button.get();
-        bool knob_button_clicked = !knob_button.get();
-
+        handle_buttons(!knob_button.get(), !aux_button.get());
         knob.sample(!knob_pin_a.get(), !knob_pin_b.get());
-
-        handle_buttons(knob_button_clicked, aux_button_clicked);
         handle_knob_rotate(knob);
 
         // Debounce

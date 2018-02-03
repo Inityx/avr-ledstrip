@@ -32,7 +32,7 @@ spec: $(ELF)
 	avr-objdump --source --demangle $(ELF) | less
 
 fuse:
-	sudo $(AVRDUDE) $(DUDE_ARGS) -U lfuse:w:0xd2:m -U hfuse:w:0xdf:m -U efuse:w:0xff:m
+	sudo $(AVRDUDE) $(DUDE_ARGS) -U lfuse:w:0xe2:m -U hfuse:w:0xdf:m -U efuse:w:0xff:m
 
 install: build
 	@echo " DUDE $(HEX)"
@@ -59,9 +59,5 @@ $(HEX): $(ELF)
 	@$(OBJHEX) -R .eeprom -O ihex $(ELF) $(HEX)
 
 $(ELF): $(MAIN_CPP)
-	@echo " CC $(basename $(notdir $@))"
+	@echo " CXX $(basename $(notdir $@))"
 	@$(CXX) $(MAIN_CPP) -o $(ELF) $(DEVICE_DEFS) $(CFLAGS) $(AVRSUPPORT_PATH)
-
-avrsupport:
-	@echo " MAKE $(AVRSUPPORT)"
-	@$(MAKE) -C $(AVRSUPPORT)
